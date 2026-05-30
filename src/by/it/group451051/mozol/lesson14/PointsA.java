@@ -1,22 +1,10 @@
 package by.it.group451051.mozol.lesson14;
 
-import java.util.Scanner;
+import java.util.*;
 
 public class PointsA {
-
-    // Класс для представления точки в 3D пространстве
-    private static class Point {
-        int x, y, z;
-
-        Point(int x, int y, int z) {
-            this.x = x;
-            this.y = y;
-            this.z = z;
-        }
-    }
-
-    // Структура данных DSU (Система непересекающихся множеств)
-    private static class DSU {
+    // Внутренний класс для DSU
+    static class DSU {
         int[] parent;
         int[] size;
 
@@ -24,99 +12,72 @@ public class PointsA {
             parent = new int[n];
             size = new int[n];
             for (int i = 0; i < n; i++) {
-                parent[i] = i;  // Изначально каждый элемент сам себе родитель
-                size[i] = 1;    // Начальный размер каждого кластера — 1
+                parent[i] = i;
+                size[i] = 1;
             }
         }
 
-        // Поиск представителя множества сжатием путей (Path Compression)
         int find(int i) {
-            if (parent[i] == i) {
-                return i;
-            }
-            return parent[i] = find(parent[i]);
+            if (parent[i] == i) return i;
+            return parent[i] = find(parent[i]); // Сжатие пути
         }
 
-        // Объединение множеств с эвристикой по размеру поддерева (Size heuristic)
         void union(int i, int j) {
             int rootI = find(i);
-            int rootY = find(j);
-
-            if (rootI != rootY) {
-                if (size[rootI] < size[rootY]) {
-                    parent[rootI] = rootY;
-                    size[rootY] += size[rootI];
-                } else {
-                    parent[rootY] = rootI;
-                    size[rootI] += size[rootY];
+            int rootJ = find(j);
+            if (rootI != rootJ) {
+                // Объединение по размеру
+                if (size[rootI] < size[rootJ]) {
+                    int temp = rootI; rootI = rootJ; rootJ = temp;
                 }
+                parent[rootJ] = rootI;
+                size[rootI] += size[rootJ];
             }
         }
-    }
-
-    // Метод вычисления Евклидова расстояния между двумя 3D-точками
-    private static double distance(Point p1, Point p2) {
-        return Math.sqrt(
-                Math.pow(p1.x - p2.x, 2) +
-                        Math.pow(p1.y - p2.y, 2) +
-                        Math.pow(p1.z - p2.z, 2)
-        );
     }
 
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        if (!scanner.hasNextInt()) return;
+        Scanner sc = new Scanner(System.in);
+        if (!sc.hasNext()) return;
 
-        int d = scanner.nextInt();
-        int n = scanner.nextInt();
+        double D = sc.nextDouble();
+        int N = sc.nextInt();
 
-        Point[] points = new Point[n];
-        for (int i = 0; i < n; i++) {
-            points[i] = new Point(scanner.nextInt(), scanner.nextInt(), scanner.nextInt());
+        double[][] points = new double[N][3];
+        for (int i = 0; i < N; i++) {
+            points[i][0] = sc.nextDouble();
+            points[i][1] = sc.nextDouble();
+            points[i][2] = sc.nextDouble();
         }
 
-        DSU dsu = new DSU(n);
+        DSU dsu = new DSU(N);
 
-        // Перебираем все пары точек и объединяем их, если расстояние строго меньше D
-        for (int i = 0; i < n; i++) {
-            for (int j = i + 1; j < n; j++) {
-                if (distance(points[i], points[j]) < d) {
+        // Объединение точек по условию расстояния
+        for (int i = 0; i < N; i++) {
+            for (int j = i + 1; j < N; j++) {
+                double dist = Math.hypot(Math.hypot(points[i][0] - points[j][0],
+                                points[i][1] - points[j][1]),
+                        points[i][2] - points[j][2]);
+                if (dist < D) {
                     dsu.union(i, j);
                 }
             }
         }
 
-        // Подсчитываем размеры получившихся кластеров
-        int[] clusterSizes = new int[n];
-        int uniqueClustersCount = 0;
-
-        for (int i = 0; i < n; i++) {
-            // Находим корень для каждой точки
-            int root = dsu.find(i);
-            // Если точка сама является корнем кластера, фиксируем её размер
-            if (root == i) {
-                clusterSizes[uniqueClustersCount++] = dsu.size[root];
+        // Собираем размеры всех корневых кластеров
+        List<Integer> clusterSizes = new ArrayList<>();
+        for (int i = 0; i < N; i++) {
+            if (dsu.parent[i] == i) {
+                clusterSizes.add(dsu.size[i]);
             }
         }
 
-        // Сортируем размеры полученных кластеров по возрастанию (сортировка вставками)
-        for (int i = 1; i < uniqueClustersCount; i++) {
-            int key = clusterSizes[i];
-            int j = i - 1;
-            while (j >= 0 && clusterSizes[j] > key) {
-                clusterSizes[j + 1] = clusterSizes[j];
-                j = j - 1;
-            }
-            clusterSizes[j + 1] = key;
-        }
+        // Сортировка по убыванию
+        clusterSizes.sort(Collections.reverseOrder());
 
-        // Выводим результат в консоль
-        for (int i = 0; i < uniqueClustersCount; i++) {
-            System.out.print(clusterSizes[i]);
-            if (i < uniqueClustersCount - 1) {
-                System.out.print(" ");
-            }
+        // Вывод результатов
+        for (int i = 0; i < clusterSizes.size(); i++) {
+            System.out.print(clusterSizes.get(i) + (i == clusterSizes.size() - 1 ? "" : " "));
         }
-        System.out.println();
     }
 }

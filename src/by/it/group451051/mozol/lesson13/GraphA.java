@@ -1,130 +1,70 @@
 package by.it.group451051.mozol.lesson13;
 
-import java.util.Scanner;
+import java.util.*;
 
 public class GraphA {
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        if (!scanner.hasNextLine()) {
-            return;
-        }
+        if (!scanner.hasNextLine()) return;
         String input = scanner.nextLine();
 
-        // 1. Находим максимальный индекс вершины, чтобы определить размер массивов
-        int maxVertex = 0;
-        // Разбираем строку по числам, игнорируя символы "->", "," и пробелы
+        // 1. Собираем все уникальные имена вершин
         String[] tokens = input.split("[\\s,>\\-]+");
+        List<String> vertexNames = new ArrayList<>();
+        for (String t : tokens) {
+            if (!t.isEmpty() && !vertexNames.contains(t)) {
+                vertexNames.add(t);
+            }
+        }
+        // Сортируем имена, чтобы лексикографический порядок (A, B, C...) соблюдался сам собой
+        Collections.sort(vertexNames);
 
-        int tokenCount = 0;
-        for (String token : tokens) {
-            if (!token.isEmpty()) {
-                tokenCount++;
-                int v = Integer.parseInt(token);
-                if (v > maxVertex) {
-                    maxVertex = v;
-                }
+        // Маппинг: имя -> индекс
+        Map<String, Integer> nameToIndex = new HashMap<>();
+        for (int i = 0; i < vertexNames.size(); i++) {
+            nameToIndex.put(vertexNames.get(i), i);
+        }
+
+        int n = vertexNames.size();
+        int[] inDegree = new int[n];
+        List<List<Integer>> adj = new ArrayList<>();
+        for (int i = 0; i < n; i++) adj.add(new ArrayList<>());
+
+        // 2. Парсим ребра
+        String[] pairs = input.split("[,]+");
+        for (String pair : pairs) {
+            String[] nodes = pair.split("->");
+            if (nodes.length == 2) {
+                String uName = nodes[0].trim();
+                String vName = nodes[1].trim();
+                int u = nameToIndex.get(uName);
+                int v = nameToIndex.get(vName);
+                adj.get(u).add(v);
+                inDegree[v]++;
             }
         }
 
-        int numVertices = maxVertex + 1;
-
-        // 2. Инициализируем структуры данных графа
-        // Массив для подсчета входящих ребер (полустепень захода)
-        int[] inDegree = new int[numVertices];
-
-        // Списки смежности: так как коллекции запрещены, используем двумерный массив.
-        // Сначала посчитаем количество исходящих ребер для каждой вершины (степень исхода)
-        int[] outDegree = new int[numVertices];
-
-        // Массив ребер для повторного прохода парсинга
-        int[][] edges = new int[tokenCount / 2][2];
-        int edgeIdx = 0;
-
-        int from = -1;
-        for (String token : tokens) {
-            if (!token.isEmpty()) {
-                if (from == -1) {
-                    from = Integer.parseInt(token);
-                } else {
-                    int to = Integer.parseInt(token);
-                    edges[edgeIdx][0] = from;
-                    edges[edgeIdx][1] = to;
-                    edgeIdx++;
-
-                    outDegree[from]++;
-                    inDegree[to]++;
-
-                    from = -1; // сбрасываем для следующей пары
-                }
-            }
+        // 3. Алгоритм Кана
+        PriorityQueue<Integer> queue = new PriorityQueue<>();
+        for (int i = 0; i < n; i++) {
+            if (inDegree[i] == 0) queue.add(i);
         }
 
-        // Создаем jagged-array (зубчатый массив) под точное количество соседей каждой вершины
-        int[][] adj = new int[numVertices][];
-        for (int i = 0; i < numVertices; i++) {
-            adj[i] = new int[outDegree[i]];
-        }
+        List<String> result = new ArrayList<>();
+        while (!queue.isEmpty()) {
+            int u = queue.poll();
+            result.add(vertexNames.get(u));
 
-        // Заполняем списки смежности
-        int[] curIdx = new int[numVertices];
-        for (int i = 0; i < edgeIdx; i++) {
-            int u = edges[i][0];
-            int v = edges[i][1];
-            adj[u][curIdx[u]++] = v;
-        }
-
-        // 3. Алгоритм Кана с поддержкой лексикографического порядка
-        // Будем использовать булев массив вершин, у которых входящая степень стала 0,
-        // и которые еще не были извлечены (симуляция PriorityQueue на фиксированном массиве)
-        boolean[] inQueue = new boolean[numVertices];
-        int activeCount = 0;
-
-        for (int i = 0; i < numVertices; i++) {
-            if (inDegree[i] == 0) {
-                inQueue[i] = true;
-                activeCount++;
-            }
-        }
-
-        // Массив для хранения результата
-        int[] result = new int[numVertices];
-        int resultIdx = 0;
-
-        while (activeCount > 0) {
-            // Ищем наименьший доступный индекс вершины с inDegree == 0 (лексикографический приоритет)
-            int u = -1;
-            for (int i = 0; i < numVertices; i++) {
-                if (inQueue[i]) {
-                    u = i;
-                    break;
-                }
-            }
-
-            // Извлекаем вершину из нашей "очереди"
-            inQueue[u] = false;
-            activeCount--;
-
-            // Добавляем в результат
-            result[resultIdx++] = u;
-
-            // Уменьшаем степень захода у всех соседей выбранной вершины
-            for (int v : adj[u]) {
+            for (int v : adj.get(u)) {
                 inDegree[v]--;
-                if (inDegree[v] == 0) {
-                    inQueue[v] = true;
-                    activeCount++;
-                }
+                if (inDegree[v] == 0) queue.add(v);
             }
         }
 
-        // 4. Вывод результата в консоль в требуемом формате
-        for (int i = 0; i < resultIdx; i++) {
-            System.out.print(result[i]);
-            if (i < resultIdx - 1) {
-                System.out.print(" ");
-            }
+        // 4. Вывод
+        for (int i = 0; i < result.size(); i++) {
+            System.out.print(result.get(i) + (i == result.size() - 1 ? "" : " "));
         }
-        System.out.println();
     }
 }

@@ -230,26 +230,40 @@ public class MyPriorityQueue<E> implements Queue<E> {
 
     @Override
     public boolean removeAll(Collection<?> c) {
-        boolean modified = false;
+        int newSize = 0;
         for (int i = 0; i < size; i++) {
-            if (c.contains(elements[i])) {
-                removeAt(i);
-                i--; // Корректируем индекс из-за сдвига элементов внутри кучи при удалении
-                modified = true;
+            if (!c.contains(elements[i])) {
+                elements[newSize++] = elements[i];
             }
+        }
+        boolean modified = (newSize != size);
+        if (modified) {
+            size = newSize;
+            // После удаления нужно перестроить кучу (heapify)
+            for (int i = (size >>> 1) - 1; i >= 0; i--) {
+                siftDown(i);
+            }
+            // Зануляем хвост для GC
+            for (int i = size; i < elements.length; i++) elements[i] = null;
         }
         return modified;
     }
 
     @Override
     public boolean retainAll(Collection<?> c) {
-        boolean modified = false;
+        int newSize = 0;
         for (int i = 0; i < size; i++) {
-            if (!c.contains(elements[i])) {
-                removeAt(i);
-                i--; // Корректируем индекс
-                modified = true;
+            if (c.contains(elements[i])) {
+                elements[newSize++] = elements[i];
             }
+        }
+        boolean modified = (newSize != size);
+        if (modified) {
+            size = newSize;
+            for (int i = (size >>> 1) - 1; i >= 0; i--) {
+                siftDown(i);
+            }
+            for (int i = size; i < elements.length; i++) elements[i] = null;
         }
         return modified;
     }
